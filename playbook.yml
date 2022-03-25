@@ -1,0 +1,46 @@
+---
+- hosts: all
+  become: true
+
+  vars:
+    nodejs_version: '16'
+    nodejs_app_location: '/usr/local/apt/node'
+    ansible_distribution_release: 'bionic' #trusty
+  tasks:
+    - name: Install the gpg key for nodejs LTS
+      apt_key:
+        url: 'https://deb.nodesource.com/gpgkey/nodesource.gpg.key'
+        state: present
+
+    - name: Install the nodejs LTS repos
+      apt_repository:
+        repo: 'deb https://deb.nodesource.com/node_{{ nodejs_version }}.x {{ ansible_distribution_release }} main'
+        state: present
+        update_cache: yes
+
+    - name: Install the nodejs and npm
+      apt:
+        name: npm
+        state: present
+
+    - name: Check nodejs app folder exists.
+      file:
+        path: '{{ nodejs_app_location }}'
+        state: directory
+
+    - name: Copy example nodejs app to server
+      copy:
+        src: app
+        dest: '{{ nodejs_app_location }}'
+
+    - name: Install app dependencies defined in package.json.
+      npm:
+        path: '{{ nodejs_app_location }}/app'
+
+    - name: Check list of running nodejs app.
+      command: forever list
+      register: forever_list
+      changed_when: false
+
+    - name: Start example nodejs app.
+      command: 'forever start {{ nodejs_app_location }}/app/app.js'
